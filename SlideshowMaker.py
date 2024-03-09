@@ -129,6 +129,7 @@ class SlideshowCreator(QWidget):
         langLayout = QHBoxLayout()
         langLayout.addWidget(self.languageLabel)
         langLayout.addWidget(self.langComboBox)
+        self.direction_subjects.append(langLayout)
         self.layout.addLayout(langLayout)
 
         # Image directory selection
