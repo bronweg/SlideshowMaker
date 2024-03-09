@@ -32,6 +32,6 @@ runs:
           --icon=images/logo.$icon_ext \
           --add-data ${data_string[0]} \
           --add-data ${data_string[1]} \
-          --name ${{ runner.os }}-${{ github.event.repository.name }}" \
-          ${{ github.event.repository.name }}".py
+          --name ${{ runner.os }}-${{ github.event.repository.name }} \
+          ${{ github.event.repository.name }}.py
       shell: bash
