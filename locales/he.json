@@ -22,5 +22,6 @@
   "max_images_exceed": "בבקשה בחר תיקייה עם לא יותר מ-50 תמומות",
   "creation": "יצירת הסרטון בתהליך...",
   "saving_settings_warning": "משהו השתבש בשמירת ההגדרות.",
+  "video_creation_failed": "תקלה ביצירת הסרטון",
   "finished": "הסרטון נוצר בהצלחה."
 }

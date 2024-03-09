@@ -22,5 +22,6 @@
   "max_images_exceed": "Please select a folder with less then 50 images",
   "creation": "Создание в процессе...",
   "saving_settings_warning": "Возникла проблема при сохранении настроек",
+  "video_creation_failed": "Video file creation failed",
   "finished": "Создание завершено"
 }

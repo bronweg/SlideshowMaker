@@ -280,13 +280,13 @@ class SlideshowCreator(QWidget):
         slideshow_path = self.outputFileLineEdit.text()
 
         try:
-            self.pdfThread = MP4CreatorThread(image_directory, audio_file, slideshow_path)
-            self.pdfThread.creationStarted.connect(self.on_pdf_creation_started)
-            self.pdfThread.progressUpdated.connect(self.update_progress_bar)
-            self.pdfThread.creationFinished.connect(self.on_pdf_creation_finished)
-            self.pdfThread.start()
+            self.mp4Thread = MP4CreatorThread(image_directory, audio_file, slideshow_path)
+            self.mp4Thread.creationStarted.connect(self.on_pdf_creation_started)
+            self.mp4Thread.progressUpdated.connect(self.update_progress_bar)
+            self.mp4Thread.creationFinished.connect(self.on_pdf_creation_finished)
+            self.mp4Thread.start()
         except Exception as e:
-            error_message = f'{self.translate_key('pdf_creation_failed')} {str(e)}'
+            error_message = f'{self.translate_key('video_creation_failed')} {str(e)}'
             QMessageBox.warning(self, self.translate_key('error_title'), error_message)
 
     def on_pdf_creation_started(self):

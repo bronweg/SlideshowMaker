@@ -22,5 +22,6 @@
   "max_images_exceed": "Please select a folder with less then 50 images",
   "creation": "Creation in progress...",
   "saving_settings_warning": "Something went wrong while saving settings",
+  "video_creation_failed": "Video file creation failed",
   "finished": "Creation finished"
 }
