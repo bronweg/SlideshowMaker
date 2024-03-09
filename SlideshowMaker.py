@@ -286,7 +286,7 @@ class SlideshowCreator(QWidget):
             self.mp4Thread.creationFinished.connect(self.on_pdf_creation_finished)
             self.mp4Thread.start()
         except Exception as e:
-            error_message = f'{self.translate_key('video_creation_failed')} {str(e)}'
+            error_message = f"{self.translate_key('video_creation_failed')} {str(e)}"
             QMessageBox.warning(self, self.translate_key('error_title'), error_message)
 
     def on_pdf_creation_started(self):
