@@ -19,9 +19,9 @@
   "audio_not_found": "Аудиофайл не существует или формат не поддерживается",
   "output_path_not_found": "Пожалуйста, укажите путь для сохранения слайд-шоу...",
   "no_images_found": "В директории не найдены поддерживаемые изображения.",
-  "max_images_exceed": "Please select a folder with less then 50 images",
+  "max_images_exceed": "Пожалуйста, выберите папку, содержащую менее 50 изображений.",
   "creation": "Создание в процессе...",
   "saving_settings_warning": "Возникла проблема при сохранении настроек",
-  "video_creation_failed": "Video file creation failed",
+  "video_creation_failed": "Создание видеофайла не удалось.",
   "finished": "Создание завершено"
 }
