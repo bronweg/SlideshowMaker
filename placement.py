@@ -73,7 +73,7 @@ def default_progress_callback(value, label=None):
 
 
 def updateProgress(done, total, progress_callback):
-    calculated_progress = math.floor((done / total)*100)
+    calculated_progress = min(100, math.ceil((done / total)*100))
     print(f'CALCULATION IS DONE for {str(calculated_progress)}%: {str(done)} of {str(total)}')
     progress_callback(calculated_progress)
     return done+1
@@ -118,6 +118,7 @@ def create_slideshow(images_path_dir, audio_path, output_mp4_path, progress_call
 
     with get_progress_listener(audio_length, progress_callback) as progress_socket:
         video_output.global_args('-progress', 'http://{}'.format(progress_socket)).run(quiet=True)
+
 
     slideshow_length = float(ffmpeg.probe(output_mp4_path)['format']['duration'])
     updateProgress(slideshow_length, audio_length, default_progress_callback)
