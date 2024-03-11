@@ -1,7 +1,5 @@
 import os
-import glob
 import time
-import uuid
 import math
 import socket
 
@@ -42,9 +40,12 @@ def progress_parser(sock, final_duration, progress_callback):
 @contextlib.contextmanager
 def get_progress_listener(final_duration, progress_callback):
     try:
-        socket_path = os.path.join(os.getcwd(), '{}.sock'.format(uuid.uuid4()))
-        sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        sock.bind(socket_path)
+        HOST = 'localhost'  # Standard loopback interface address (localhost)
+        PORT = 65432  # Port to listen on (non-privileged ports are > 1023)
+
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.bind((HOST, PORT))
+        socket_path = ':'.join((HOST, str(PORT)))
         sock.listen(1)
         listener = gevent.spawn(progress_parser, sock, final_duration, progress_callback)
         yield socket_path
@@ -79,41 +80,55 @@ def updateProgress(done, total, progress_callback):
 def create_slideshow(images_path_dir, audio_path, output_mp4_path, progress_callback=default_progress_callback):
     start_time = time.time()
 
-    images_path_glob = os.path.join(images_path_dir, '*.jpeg')
-    images_count = len(glob.glob(images_path_glob))
+    images_path_arr = [
+        os.path.join(images_path_dir, filename) for
+        filename in os.listdir(images_path_dir) if
+        filename.lower().endswith(('png', 'jpg', 'jpeg', 'gif', 'bmp'))
+    ]
+
+    images_count = len(images_path_arr)
     audio_length = float(ffmpeg.probe(audio_path)['format']['duration'])
     image_rate = images_count / audio_length
+    image_fps = image_rate*10
 
-    my_images = ffmpeg.input(
-                    images_path_glob, pattern_type='glob', framerate=image_rate
-                ).filter(
-                    'scale', size='1920x1080', force_original_aspect_ratio='decrease'
-                ).filter(
-                    'pad', width=1920, height=1080, x='(ow-iw)/2', y='(oh-ih)/2', color='black'
-                )
     my_audio = ffmpeg.input(audio_path)
 
-    with get_progress_listener(audio_length, progress_callback) as progress_socket:
-        ffmpeg.concat(
-                my_images, my_audio, v=1, a=1
-            ).output(
-                output_mp4_path, **{'c:v': 'libx264', 'pix_fmt': 'yuv420p', 'color_range': 'pc', 'c:a': 'aac'} #'r': 24
-            ).global_args('-progress', 'unix://{}'.format(progress_socket)
-            ).overwrite_output().run(quiet=True)
+    images_stream_arr = [
+        ffmpeg.input(
+            filename, r = image_rate
+        ).filter(
+            'scale', size='1920x1080', force_original_aspect_ratio='decrease'
+        ).filter(
+            'pad', width=1920, height=1080, x='(ow-iw)/2', y='(oh-ih)/2', color='black'
+        ).filter(
+            'setsar', ratio=1
+        ).filter(
+            'fps', fps = image_fps
+        ) for filename in images_path_arr
+    ]
 
+    images_concat = ffmpeg.concat(*images_stream_arr)
+    images_audio = ffmpeg.concat(images_concat, my_audio, v=1, a=1)
+
+    video_output = ffmpeg.output(
+        images_audio, output_mp4_path, **{'c:v': 'libx264', 'pix_fmt': 'yuv420p', 'color_range': 'pc', 'c:a': 'aac', 'r': 1}
+    ).overwrite_output()
+
+    with get_progress_listener(audio_length, progress_callback) as progress_socket:
+        video_output.global_args('-progress', 'http://{}'.format(progress_socket)).run(quiet=True)
 
     slideshow_length = float(ffmpeg.probe(output_mp4_path)['format']['duration'])
     updateProgress(slideshow_length, audio_length, default_progress_callback)
+
     end_time = time.time()
     execution_time = end_time - start_time
 
     print(f'Execution time: {str(execution_time)} seconds')
 
 
-
 if __name__ == "__main__":
     my_images_f = '/Users/betty/PythonProjects/image_resize/photos'
-    my_audio_f = 'my_audio.mp3'
+    my_audio_f = '/Users/betty/PythonProjects/slide_show/my_audio.mp3'
     my_slides_f = 'ffmpeg_raw.mp4'
 
     create_slideshow(my_images_f, my_audio_f, my_slides_f)

@@ -1,6 +1,5 @@
 import sys
 import os
-import glob
 import json
 
 import placement
@@ -259,7 +258,13 @@ class SlideshowCreator(QWidget):
             QMessageBox.warning(self, self.translate_key('error_title'), self.translate_key('directory_not_found'))
             return
 
-        images_count = len(glob.glob(os.path.join(self.dirImagesLineEdit.text(), '*.jpeg')))
+        images = [
+            filename for
+            filename in os.listdir(self.dirImagesLineEdit.text()) if
+            filename.lower().endswith(('png', 'jpg', 'jpeg', 'gif', 'bmp'))
+        ]
+        images_count = len(images)
+
         if not images_count:
             QMessageBox.warning(self, self.translate_key('error_title'), self.translate_key('no_images_found'))
             return
