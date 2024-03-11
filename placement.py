@@ -5,8 +5,11 @@ import socket
 
 import contextlib
 
-import gevent
-from gevent import monkey; monkey.patch_all(thread=False, subprocess=False)
+
+import threading
+
+# import gevent
+# from gevent import monkey; monkey.patch_all(thread=False, subprocess=False)
 
 import ffmpeg
 
@@ -39,25 +42,24 @@ def progress_parser(sock, final_duration, progress_callback):
 
 @contextlib.contextmanager
 def get_progress_listener(final_duration, progress_callback):
-    try:
-        HOST = 'localhost'  # Standard loopback interface address (localhost)
-        PORT = 65432  # Port to listen on (non-privileged ports are > 1023)
+    HOST = 'localhost'  # Standard loopback interface address (localhost)
+    PORT = 65432  # Port to listen on (non-privileged ports are > 1023)
+    listener = type("Joinable", (object,), {"join": lambda self: "joined" })
 
+    try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.bind((HOST, PORT))
         socket_path = ':'.join((HOST, str(PORT)))
         sock.listen(1)
-        listener = gevent.spawn(progress_parser, sock, final_duration, progress_callback)
+        listener = threading.Thread(target=progress_parser, args=(sock, final_duration, progress_callback))
+        listener.start()
         yield socket_path
     finally:
         try:
             listener.join()
         except:
             pass
-        try:
-            os.remove(socket_path)
-        except:
-            pass
+
 
 
 def default_progress_callback(value, label=None):
