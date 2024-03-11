@@ -117,7 +117,7 @@ def create_slideshow(images_path_dir, audio_path, output_mp4_path, progress_call
     ).overwrite_output()
 
     with get_progress_listener(audio_length, progress_callback) as progress_socket:
-        video_output.global_args('-progress', 'http://{}'.format(progress_socket)).run(quiet=True)
+        video_output.global_args('-progress', 'http://{}'.format(progress_socket)).run() #(quiet=True)
 
 
     slideshow_length = float(ffmpeg.probe(output_mp4_path)['format']['duration'])
