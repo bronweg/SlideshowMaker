@@ -136,6 +136,7 @@ class SlideshowCreator(QWidget):
         self.dirImagesLabel = QLabel()
         self.locale_subjects['images_directory_label'] = self.dirImagesLabel
         self.dirImagesLineEdit = QLineEdit()
+        self.dirImagesLineEdit.setMinimumWidth(400)
         self.dirImagesButton = QPushButton()
         self.dirImagesButton.clicked.connect(self.choose_input_images)
         self.locale_subjects['choose_directory'] = self.dirImagesButton
