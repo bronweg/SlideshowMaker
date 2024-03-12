@@ -1,5 +1,6 @@
 import sys
 import os
+import subprocess
 import json
 
 import placement
@@ -319,6 +320,14 @@ class SlideshowCreator(QWidget):
 if __name__ == '__main__':
     if hasattr(sys, '_MEIPASS'):
         os.chdir(sys._MEIPASS)
+
+        if os.name == 'nt':
+            print('WINDOWS, monkey patching subprocess to be silent')
+            original_popen = subprocess.Popen
+            def silent_popen_windows(*args, **kwargs):
+                return original_popen(*args, **kwargs, creationflags=subprocess.CREATE_NO_WINDOW)
+            subprocess.Popen = silent_popen_windows
+
     app = QApplication(sys.argv)
     window = SlideshowCreator()
     window.show()
