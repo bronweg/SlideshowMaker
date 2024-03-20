@@ -1,6 +1,8 @@
 import os
 import time
 import math
+import random
+import string
 import socket
 
 import contextlib
@@ -14,9 +16,14 @@ import threading
 import ffmpeg
 
 
-
 def progress_parser(sock, final_duration, progress_callback):
-    connection, client_address = sock.accept()
+    sock.settimeout(10)
+    try:
+        connection, client_address = sock.accept()
+    except socket.timeout:
+        print("Timeout occurred while waiting for a connection")
+        return
+
     data = b''
     try:
         while True:
@@ -44,21 +51,24 @@ def progress_parser(sock, final_duration, progress_callback):
 def get_progress_listener(final_duration, progress_callback):
     HOST = 'localhost'  # Standard loopback interface address (localhost)
     PORT = 65432  # Port to listen on (non-privileged ports are > 1023)
-    listener = type("Joinable", (object,), {"join": lambda self: "joined" })
+    sock = type("Closable", (object,), {"close": lambda self: "closed"})
+    listener = type("Joinable", (object,), {"join": lambda self: "joined"})
 
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.bind((HOST, PORT))
-        socket_path = ':'.join((HOST, str(PORT)))
+        socket_path = '{}:{:d}/{}/{}'.format(
+            HOST, PORT, 'slideshowcreator',
+            ''.join(random.choices(string.ascii_lowercase, k=8)))
         sock.listen(1)
         listener = threading.Thread(target=progress_parser, args=(sock, final_duration, progress_callback))
         listener.start()
         yield socket_path
     finally:
-        try:
+        with contextlib.suppress(Exception):
             listener.join()
-        except:
-            pass
+        with contextlib.suppress(Exception):
+            sock.close()
 
 
 
@@ -76,7 +86,7 @@ def updateProgress(done, total, progress_callback):
     calculated_progress = min(100, math.ceil((done / total)*100))
     print(f'CALCULATION IS DONE for {str(calculated_progress)}%: {str(done)} of {str(total)}')
     progress_callback(calculated_progress)
-    return done+1
+    return calculated_progress
 
 
 def create_slideshow(images_path_dir, audio_path, output_mp4_path, progress_callback=default_progress_callback):

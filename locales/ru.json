@@ -1,6 +1,8 @@
 {
   "title": "Генератор слайд-шоу",
   "language_label": "Язык:",
+  "project_label": "Текущий проект:",
+  "choose_project": "Путь к проекту:",
   "choose_file": "Выбрать файл...",
   "create_file": "Создать файл...",
   "choose_directory": "Выбрать папку",

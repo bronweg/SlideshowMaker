@@ -37,6 +37,8 @@ class SlideshowCreator(QWidget):
         settings = self.load_settings()
         self.current_language = self.get_language(settings)
         self.translations = self.load_translations(self.current_language)
+        self.project_path, self.project_folder = self.get_project_path(settings)
+        self.images_folder = self.get_images_folder(settings)
         self.layout = QVBoxLayout()
         self.setLayout(self.layout)
         self.locale_subjects = dict()
@@ -51,12 +53,12 @@ class SlideshowCreator(QWidget):
         filename = 'SlideshowMaker.json'
         return os.path.join(home_dir, filename)
 
-    def save_settings(self, language, imageDirectory='', audioFile='', outputPath=''):
+    def save_settings(self, language):
         settings = {
             'language': language,
-            'imageDirectory': imageDirectory,
-            'audioFile': audioFile,
-            'outputPath': outputPath,
+            'projectPath': self.project_path,
+            'projectFolder': self.project_folder,
+            'imagesFolder': self.images_folder,
         }
         try:
             with open(self.get_settings_file(), 'w') as f:
@@ -67,9 +69,6 @@ class SlideshowCreator(QWidget):
     def load_settings(self):
         settings = {
             'language': 'English',
-            'imageDirectory': os.path.expanduser("~"),
-            'audioFile': '',
-            'outputPath': '',
         }
         try:
             with open(self.get_settings_file(), 'r') as f:
@@ -78,11 +77,21 @@ class SlideshowCreator(QWidget):
             pass
         return settings
 
+    @staticmethod
+    def get_project_path(settings) -> tuple[str, str]:
+        return \
+            settings.get('projectPath', os.path.expanduser("~")), \
+                settings.get('projectFolder', 'projects')
+
+    @staticmethod
+    def get_images_folder(settings) -> str:
+        return settings.get('imagesFolder', 'images')
+
     def apply_settings(self, settings):
         self.langComboBox.setCurrentText(self.current_language)
-        self.dirImagesLineEdit.setText(settings.get('imageDirectory', ''))
-        self.audioFileLineEdit.setText(settings.get('audioFile', ''))
-        self.outputFileLineEdit.setText(settings.get('outputPath', ''))
+
+        date_project_path = os.path.join(self.project_path, self.project_folder)
+        self.projLineEdit.setText(date_project_path)
 
     @staticmethod
     def get_language(settings):
@@ -131,6 +140,20 @@ class SlideshowCreator(QWidget):
         langLayout.addWidget(self.langComboBox)
         self.direction_subjects.append(langLayout)
         self.layout.addLayout(langLayout)
+
+        # Project selection
+        self.projLabel = QLabel()
+        self.locale_subjects['project_label'] = self.projLabel
+        self.projLineEdit = QLineEdit()
+        self.projButton = QPushButton()
+        self.locale_subjects['choose_project'] = self.projButton
+        self.projButton.clicked.connect(self.choose_project)
+        self.projLayout = QHBoxLayout()
+        self.projLayout.addWidget(self.projLabel)
+        self.projLayout.addWidget(self.projLineEdit)
+        self.projLayout.addWidget(self.projButton)
+        self.direction_subjects.append(self.projLayout)
+        self.layout.addLayout(self.projLayout)
 
         # Image directory selection
         self.dirImagesLabel = QLabel()
@@ -194,6 +217,25 @@ class SlideshowCreator(QWidget):
     def reset_progress(self):
         self.set_progress_status('')
         self.progressBar.setValue(0)
+
+    def choose_project(self):
+        proj_path = QFileDialog.getExistingDirectory(self,
+                                                     self.translate_key('choose_project'),
+                                                     dir=self.projLineEdit.text())
+        if proj_path:
+            self.projLineEdit.setText(proj_path)
+
+            images_path = os.path.join(proj_path, self.images_folder)
+            self.dirImagesLineEdit.setText(images_path)
+
+            proj_name = os.path.basename(proj_path)
+            proj_parent_name = os.path.basename(os.path.dirname(proj_path))
+            file_name = f'{proj_parent_name}_{proj_name}'
+            file_path = os.path.join(proj_path, file_name)
+            self.audioFileLineEdit.setText(f'{file_path}.mp3')
+            self.outputFileLineEdit.setText(f'{file_path}.mp4')
+
+        self.reset_progress()
 
     def choose_input_images(self):
         self.choose_directory(self.dirImagesLineEdit)
@@ -289,19 +331,17 @@ class SlideshowCreator(QWidget):
 
         try:
             self.mp4Thread = MP4CreatorThread(image_directory, audio_file, slideshow_path)
-            self.mp4Thread.creationStarted.connect(self.on_pdf_creation_started)
+            self.mp4Thread.creationStarted.connect(self.on_slideshow_creation_started)
             self.mp4Thread.progressUpdated.connect(self.update_progress_bar)
-            self.mp4Thread.creationFinished.connect(self.on_pdf_creation_finished)
+            self.mp4Thread.creationFinished.connect(self.on_slideshow_creation_finished)
             self.mp4Thread.start()
         except Exception as e:
             error_message = f"{self.translate_key('video_creation_failed')} {str(e)}"
             QMessageBox.warning(self, self.translate_key('error_title'), error_message)
 
-    def on_pdf_creation_started(self):
+    def on_slideshow_creation_started(self):
         self.processButton.setEnabled(False)
-        self.save_settings(self.current_language,
-                           self.dirImagesLineEdit.text(), self.audioFileLineEdit.text(),
-                           self.outputFileLineEdit.text())
+        self.save_settings(self.current_language)
         self.set_progress_status('creation')
 
     def set_progress_status(self, status):
@@ -313,7 +353,7 @@ class SlideshowCreator(QWidget):
             self.set_progress_status(label)
         self.progressBar.setValue(value)
 
-    def on_pdf_creation_finished(self):
+    def on_slideshow_creation_finished(self):
         self.set_progress_status('finished')
         self.processButton.setEnabled(True)
         QMessageBox.information(self, self.translate_key('success_title'), self.translate_key('success_message'))
