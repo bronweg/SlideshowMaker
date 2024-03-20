@@ -2,7 +2,7 @@
   "title": "Slideshow Maker",
   "language_label": "Language:",
   "project_label": "Current project:",
-  "choose_project": "Project Path:",
+  "choose_project": "Choose project...",
   "choose_file": "Choose file...",
   "create_file": "Create file...",
   "choose_directory": "Choose folder",
