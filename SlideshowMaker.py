@@ -223,6 +223,7 @@ class SlideshowCreator(QWidget):
                                                      self.translate_key('choose_project'),
                                                      dir=self.projLineEdit.text())
         if proj_path:
+            proj_path = os.path.normpath(proj_path)
             self.projLineEdit.setText(proj_path)
 
             images_path = os.path.join(proj_path, self.images_folder)
