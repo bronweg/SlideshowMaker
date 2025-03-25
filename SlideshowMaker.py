@@ -8,7 +8,7 @@ import placement
 from PySide6.QtWidgets import (QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel,
                                QLineEdit, QFileDialog, QComboBox, QMessageBox, QProgressBar)
 from PySide6.QtCore import Qt, QThread, Signal
-from PySide6.QtGui import (QIcon, QPixmap)
+from PySide6.QtGui import QPixmap
 
 
 class MP4CreatorThread(QThread):
@@ -39,10 +39,23 @@ class SlideshowCreator(QWidget):
         self.translations = self.load_translations(self.current_language)
         self.project_path, self.project_folder = self.get_project_path(settings)
         self.images_folder = self.get_images_folder(settings)
-        self.layout = QVBoxLayout()
-        self.setLayout(self.layout)
+
+        # declare QComponent groups
         self.locale_subjects = dict()
         self.direction_subjects = list()
+
+        # declare QComponents
+        self.langComboBox = None
+        self.projLabel = None
+        self.projLineEdit = None
+        self.dirImagesLineEdit = None
+        self.audioFileLineEdit = None
+        self.outputFileLineEdit = None
+        self.processButton = None
+        self.progressStatus = None
+        self.progressBar = None
+
+
         self.setup_ui()
         self.apply_settings(settings)
         self.change_language(self.current_language)
@@ -121,98 +134,120 @@ class SlideshowCreator(QWidget):
 
 
     def setup_ui(self):
+        layout = QVBoxLayout()
+        self.setLayout(layout)
+
         # Update Logo
-        self.logoLabel = QLabel(self)
+        logoLabel = QLabel(self)
         self.logoPixmap = QPixmap('images/logo.png')
-        scaledLogoPixmap = self.logoPixmap.scaled(100, 100, Qt.KeepAspectRatio, Qt.SmoothTransformation)
-        self.logoLabel.setPixmap(scaledLogoPixmap)
-        self.logoLabel.setFixedSize(scaledLogoPixmap.size())
-        self.layout.addWidget(self.logoLabel)
+        scaledLogoPixmap = self.logoPixmap.scaled(100, 100, Qt.AspectRatioMode.KeepAspectRatio,
+                                                  Qt.TransformationMode.SmoothTransformation)
+        logoLabel.setPixmap(scaledLogoPixmap)
+        logoLabel.setFixedSize(scaledLogoPixmap.size())
+        layout.addWidget(logoLabel)
 
         # Language selection
-        self.languageLabel = QLabel()
-        self.locale_subjects['language_label'] = self.languageLabel
-        self.langComboBox = QComboBox()
-        self.langComboBox.addItems(self.load_language_names())
-        self.langComboBox.currentTextChanged.connect(self.change_language)
+        languageLabel = QLabel()
+        langComboBox = QComboBox()
+        langComboBox.addItems(self.load_language_names())
+        langComboBox.currentTextChanged.connect(self.change_language)
         langLayout = QHBoxLayout()
-        langLayout.addWidget(self.languageLabel)
-        langLayout.addWidget(self.langComboBox)
-        self.direction_subjects.append(langLayout)
-        self.layout.addLayout(langLayout)
+        langLayout.addWidget(languageLabel)
+        langLayout.addWidget(langComboBox)
+        layout.addLayout(langLayout)
 
         # Project selection
-        self.projLabel = QLabel()
-        self.locale_subjects['project_label'] = self.projLabel
-        self.projLineEdit = QLineEdit()
-        self.projButton = QPushButton()
-        self.locale_subjects['choose_project'] = self.projButton
-        self.projButton.clicked.connect(self.choose_project)
-        self.projLayout = QHBoxLayout()
-        self.projLayout.addWidget(self.projLabel)
-        self.projLayout.addWidget(self.projLineEdit)
-        self.projLayout.addWidget(self.projButton)
-        self.direction_subjects.append(self.projLayout)
-        self.layout.addLayout(self.projLayout)
+        projLabel = QLabel()
+        projLineEdit = QLineEdit()
+        projButton = QPushButton()
+
+        projButton.clicked.connect(self.choose_project)
+        projLayout = QHBoxLayout()
+        projLayout.addWidget(projLabel)
+        projLayout.addWidget(projLineEdit)
+        projLayout.addWidget(projButton)
+        layout.addLayout(projLayout)
 
         # Image directory selection
-        self.dirImagesLabel = QLabel()
-        self.locale_subjects['images_directory_label'] = self.dirImagesLabel
-        self.dirImagesLineEdit = QLineEdit()
-        self.dirImagesLineEdit.setMinimumWidth(400)
-        self.dirImagesButton = QPushButton()
-        self.dirImagesButton.clicked.connect(self.choose_input_images)
-        self.locale_subjects['choose_directory'] = self.dirImagesButton
+        dirImagesLabel = QLabel()
+        dirImagesLineEdit = QLineEdit()
+        dirImagesLineEdit.setMinimumWidth(400)
+        dirImagesButton = QPushButton()
+        dirImagesButton.clicked.connect(self.choose_input_images)
         dirImagesLayout = QHBoxLayout()
-        dirImagesLayout.addWidget(self.dirImagesLabel)
-        dirImagesLayout.addWidget(self.dirImagesLineEdit)
-        dirImagesLayout.addWidget(self.dirImagesButton)
-        self.direction_subjects.append(dirImagesLayout)
-        self.layout.addLayout(dirImagesLayout)
+        dirImagesLayout.addWidget(dirImagesLabel)
+        dirImagesLayout.addWidget(dirImagesLineEdit)
+        dirImagesLayout.addWidget(dirImagesButton)
+        layout.addLayout(dirImagesLayout)
 
         # Audio file selection
-        self.audioFileLabel = QLabel()
-        self.locale_subjects['audio_mp3_label'] = self.audioFileLabel
-        self.audioFileLineEdit = QLineEdit()
-        self.audioFileButton = QPushButton()
-        self.audioFileButton.clicked.connect(self.choose_input_audio)
-        self.locale_subjects['choose_mp3_button'] = self.audioFileButton
+        audioFileLabel = QLabel()
+        audioFileLineEdit = QLineEdit()
+        audioFileButton = QPushButton()
+        audioFileButton.clicked.connect(self.choose_input_audio)
         audioFileLayout = QHBoxLayout()
-        audioFileLayout.addWidget(self.audioFileLabel)
-        audioFileLayout.addWidget(self.audioFileLineEdit)
-        audioFileLayout.addWidget(self.audioFileButton)
-        self.direction_subjects.append(audioFileLayout)
-        self.layout.addLayout(audioFileLayout)
+        audioFileLayout.addWidget(audioFileLabel)
+        audioFileLayout.addWidget(audioFileLineEdit)
+        audioFileLayout.addWidget(audioFileButton)
+        layout.addLayout(audioFileLayout)
 
 
         # Output file selection
-        self.outputFileLabel = QLabel()
-        self.locale_subjects['output_mp4_label'] = self.outputFileLabel
-        self.outputFileLineEdit = QLineEdit()
-        self.outputFileButton = QPushButton()
-        self.outputFileButton.clicked.connect(self.create_output_video)
-        self.locale_subjects['create_mp4_button'] = self.outputFileButton
+        outputFileLabel = QLabel()
+        outputFileLineEdit = QLineEdit()
+        outputFileButton = QPushButton()
+        outputFileButton.clicked.connect(self.create_output_video)
         outputFileLayout = QHBoxLayout()
-        outputFileLayout.addWidget(self.outputFileLabel)
-        outputFileLayout.addWidget(self.outputFileLineEdit)
-        outputFileLayout.addWidget(self.outputFileButton)
-        self.direction_subjects.append(outputFileLayout)
-        self.layout.addLayout(outputFileLayout)
+        outputFileLayout.addWidget(outputFileLabel)
+        outputFileLayout.addWidget(outputFileLineEdit)
+        outputFileLayout.addWidget(outputFileButton)
+        layout.addLayout(outputFileLayout)
 
         # Process button
-        self.processButton = QPushButton(self.translate_key('process_button'))
-        self.locale_subjects['process_button'] = self.processButton
-        self.processButton.clicked.connect(self.create_slideshow)
-        self.layout.addWidget(self.processButton)
+        processButton = QPushButton(self.translate_key('process_button'))
+        processButton.clicked.connect(self.create_slideshow)
+        layout.addWidget(processButton)
 
         # Progress Bar
-        self.progressLabel = QLabel('')
-        self.progressStatus = ''
-        self.layout.addWidget(self.progressLabel)
-        self.progressBar = QProgressBar(self)
-        self.progressBar.setValue(0)  # start value
-        self.progressBar.setMaximum(100)  # 100% completion
-        self.layout.addWidget(self.progressBar)
+        progressLabel = QLabel('')
+        progressStatus = ''
+        layout.addWidget(progressLabel)
+        progressBar = QProgressBar(self)
+        progressBar.setValue(0)  # start value
+        progressBar.setMaximum(100)  # 100% completion
+        layout.addWidget(progressBar)
+
+        self.locale_subjects['language_label'] = languageLabel
+        self.locale_subjects['project_label'] = projLabel
+        self.locale_subjects['choose_project'] = projButton
+        self.locale_subjects['images_directory_label'] = dirImagesLabel
+        self.locale_subjects['choose_directory'] = dirImagesButton
+        self.locale_subjects['audio_mp3_label'] = audioFileLabel
+        self.locale_subjects['choose_mp3_button'] = audioFileButton
+        self.locale_subjects['output_mp4_label'] = outputFileLabel
+        self.locale_subjects['create_mp4_button'] = outputFileButton
+        self.locale_subjects['process_button'] = processButton
+
+        self.direction_subjects.append(langLayout)
+        self.direction_subjects.append(projLayout)
+        self.direction_subjects.append(dirImagesLayout)
+        self.direction_subjects.append(audioFileLayout)
+        self.direction_subjects.append(outputFileLayout)
+
+        self.langComboBox = langComboBox
+        self.projLabel = projLabel
+        self.projLineEdit = projLineEdit
+        self.dirImagesLineEdit = dirImagesLineEdit
+        self.audioFileLineEdit = audioFileLineEdit
+        self.outputFileLineEdit = outputFileLineEdit
+        self.processButton = processButton
+        self.progressLabel = progressLabel
+        self.progressStatus = progressStatus
+        self.progressBar = progressBar
+
+
+
+
 
     def reset_progress(self):
         self.set_progress_status('')
@@ -296,7 +331,7 @@ class SlideshowCreator(QWidget):
         # Update layout
         is_rtl = (language == 'עברית')
         for direction_subject in self.direction_subjects:
-            direction_subject.setDirection(QHBoxLayout.RightToLeft if is_rtl else QHBoxLayout.LeftToRight)
+            direction_subject.setDirection(QHBoxLayout.Direction.RightToLeft if is_rtl else QHBoxLayout.Direction.LeftToRight)
 
     def create_slideshow(self):
         if not os.path.isdir(self.dirImagesLineEdit.text()):
@@ -357,7 +392,8 @@ class SlideshowCreator(QWidget):
     def on_slideshow_creation_finished(self):
         self.set_progress_status('finished')
         self.processButton.setEnabled(True)
-        QMessageBox.information(self, self.translate_key('success_title'), self.translate_key('success_message'))
+        QMessageBox.information(self, self.translate_key('success_title'), self.translate_key('success_message'),
+                                QMessageBox.StandardButton.Ok)
 
 if __name__ == '__main__':
     if hasattr(sys, '_MEIPASS'):
