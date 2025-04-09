@@ -1,14 +1,22 @@
+from talelle_setup import Path, TALELLE_DIR, config_log
+TALELLE_TOOL = Path(__file__).stem
+config_log(TALELLE_TOOL)
+
 import sys
 import os
 import subprocess
 import json
 
 import placement
+import logging
 
 from PySide6.QtWidgets import (QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel,
                                QLineEdit, QFileDialog, QComboBox, QMessageBox, QProgressBar)
 from PySide6.QtCore import Qt, QThread, Signal
 from PySide6.QtGui import QPixmap
+
+logger = logging.getLogger(__name__)
+logger.info(f'{TALELLE_TOOL} started')
 
 
 class MP4CreatorThread(QThread):
@@ -62,9 +70,7 @@ class SlideshowCreator(QWidget):
 
     @staticmethod
     def get_settings_file():
-        home_dir = os.path.expanduser('~')
-        filename = 'SlideshowMaker.json'
-        return os.path.join(home_dir, filename)
+        return os.path.join(TALELLE_DIR, f'{TALELLE_TOOL}.json')
 
     def save_settings(self, language):
         settings = {
