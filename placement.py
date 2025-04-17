@@ -1,27 +1,27 @@
+import logging
+import mimetypes
 import os
 import time
+from typing import Callable, Optional
+
 import math
-import random
-import string
 import socket
 
 import contextlib
 
-
 import threading
-
-# import gevent
-# from gevent import monkey; monkey.patch_all(thread=False, subprocess=False)
 
 import ffmpeg
 
+logger = logging.getLogger(__name__)
 
-def progress_parser(sock, final_duration, progress_callback):
+
+def progress_parser(sock: socket.socket, final_duration: float, progress_callback: Callable):
     sock.settimeout(10)
     try:
         connection, client_address = sock.accept()
     except socket.timeout:
-        print("Timeout occurred while waiting for a connection")
+        logger.error("Timeout occurred while waiting for a connection")
         return
 
     data = b''
@@ -31,16 +31,16 @@ def progress_parser(sock, final_duration, progress_callback):
             if not more_data:
                 break
             data += more_data
-            lines = data.split(b'\n')
-            for line in lines[:-1]:
-                line = line.decode()
+            bin_lines = data.split(b'\n')
+            for bin_line in bin_lines[:-1]:
+                line = bin_line.decode()
                 parts = line.split('=')
                 key = parts[0] if len(parts) > 0 else None
                 value = parts[1] if len(parts) > 1 else None
                 if key == 'out_time_ms':
                     duration = int(value) / 1000000 if value.isdigit() else 0
-                    updateProgress(duration, final_duration, progress_callback)
-            data = lines[-1]
+                    update_progress(duration, final_duration, progress_callback)
+            data = bin_lines[-1]
     finally:
         connection.close()
 
@@ -48,22 +48,18 @@ def progress_parser(sock, final_duration, progress_callback):
 
 
 @contextlib.contextmanager
-def get_progress_listener(final_duration, progress_callback):
-    HOST = 'localhost'  # Standard loopback interface address (localhost)
-    PORT = 65432  # Port to listen on (non-privileged ports are > 1023)
+def get_progress_listener(final_duration: float, progress_callback: Callable):
     sock = type("Closable", (object,), {"close": lambda self: "closed"})
     listener = type("Joinable", (object,), {"join": lambda self: "joined"})
 
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.bind((HOST, PORT))
-        socket_path = '{}:{:d}/{}/{}'.format(
-            HOST, PORT, 'slideshowcreator',
-            ''.join(random.choices(string.ascii_lowercase, k=8)))
+        sock.bind(('localhost', 0))
+        listen_on = '{}:{:d}'.format(*sock.getsockname())
         sock.listen(1)
         listener = threading.Thread(target=progress_parser, args=(sock, final_duration, progress_callback))
         listener.start()
-        yield socket_path
+        yield listen_on
     finally:
         with contextlib.suppress(Exception):
             listener.join()
@@ -72,9 +68,9 @@ def get_progress_listener(final_duration, progress_callback):
 
 
 
-def default_progress_callback(value, label=None):
+def default_progress_callback(value: int, label: Optional[str]=None):
     if label:
-        print(f'START REPORTING ON {label}')
+        logger.debug(f'START REPORTING ON {label}')
     for _ in range(value):
         print('+', end = '')
     for _ in range(value, 100):
@@ -82,26 +78,47 @@ def default_progress_callback(value, label=None):
     print()
 
 
-def updateProgress(done, total, progress_callback):
+def update_progress(done: float, total: float, progress_callback: Callable) -> int:
     calculated_progress = min(100, math.ceil((done / total)*100))
-    print(f'CALCULATION IS DONE for {str(calculated_progress)}%: {str(done)} of {str(total)}')
+    logger.debug(f'CALCULATION IS DONE for {calculated_progress}%: {done} of {total}')
     progress_callback(calculated_progress)
     return calculated_progress
 
 
-def create_slideshow(images_path_dir, audio_path, output_mp4_path, progress_callback=default_progress_callback):
+def is_valid_image(file_path):
+    logger.debug(f'checking {file_path}')
+    mime_type, _ = mimetypes.guess_type(file_path)
+    if mime_type and mime_type.startswith('image'):
+        logger.debug(f'{file_path} is a valid image by mimetype')
+        return True
+    # If mimetype didn't recognize, try probing with ffmpeg
+    try:
+        probe_info = ffmpeg.probe(file_path)
+        if probe_info['streams'][0]['codec_type'] == 'video':
+            logger.debug(f'{file_path} is a valid image by probe_info')
+            return True
+    except ffmpeg.Error:
+        pass
+    logger.warning(f'{file_path} is not a valid image')
+    return False
+
+
+def create_slideshow(images_path_dir: str, audio_path: str, output_mp4_path: str,
+                         progress_callback: Callable = default_progress_callback):
     start_time = time.time()
 
     images_path_arr = [
-        os.path.join(images_path_dir, filename) for
-        filename in os.listdir(images_path_dir) if
-        filename.lower().endswith(('png', 'jpg', 'jpeg', 'gif', 'bmp'))
+        filepath for filename in os.listdir(images_path_dir) if
+        is_valid_image(filepath := os.path.join(images_path_dir, filename))
     ]
 
     images_count = len(images_path_arr)
     audio_length = float(ffmpeg.probe(audio_path)['format']['duration'])
     image_rate = images_count / audio_length
     image_fps = image_rate*10
+
+    logger.info(f'Audio length: {audio_length}, Images count: {images_count}')
+    logger.debug(f'Image rate: {image_rate}, Image fps: {image_fps}')
 
     my_audio = ffmpeg.input(audio_path)
 
@@ -123,7 +140,8 @@ def create_slideshow(images_path_dir, audio_path, output_mp4_path, progress_call
     images_audio = ffmpeg.concat(images_concat, my_audio, v=1, a=1)
 
     video_output = ffmpeg.output(
-        images_audio, output_mp4_path, **{'c:v': 'libx264', 'pix_fmt': 'yuv420p', 'color_range': 'pc', 'c:a': 'aac', 'r': 1}
+        images_audio, output_mp4_path,
+        **{'c:v': 'libx264', 'pix_fmt': 'yuv420p', 'color_range': 'pc', 'c:a': 'aac', 'r': 1}
     ).overwrite_output()
 
     with get_progress_listener(audio_length, progress_callback) as progress_socket:
@@ -135,12 +153,13 @@ def create_slideshow(images_path_dir, audio_path, output_mp4_path, progress_call
 
 
     slideshow_length = float(ffmpeg.probe(output_mp4_path)['format']['duration'])
-    updateProgress(slideshow_length, audio_length, default_progress_callback)
+    logger.info(f'Created slideshow length: {slideshow_length}')
+    update_progress(slideshow_length, audio_length, progress_callback)
 
     end_time = time.time()
     execution_time = end_time - start_time
 
-    print(f'Execution time: {str(execution_time)} seconds')
+    print(f'Execution time: {execution_time} seconds')
 
 
 if __name__ == "__main__":
